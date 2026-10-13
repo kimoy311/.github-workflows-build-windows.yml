@@ -1,0 +1,30 @@
+name: Build Windows
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -B build -G "Visual Studio 17 2022" -A x64 -DCOPY_PLUGIN_AFTER_BUILD=OFF
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Collect artifacts
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Get-ChildItem -Recurse -Directory -Filter "*.vst3" build | Select-Object -First 1 | ForEach-Object { Copy-Item $_.FullName dist -Recurse }
+          Get-ChildItem -Recurse -Filter "Drum Trigger.exe" build | Select-Object -First 1 | ForEach-Object { Copy-Item $_.FullName dist }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DrumTrigger-Windows-x64
+          path: dist
